@@ -11,4 +11,5 @@ Here is a list:
 * Yvan Cournoyer
 * Booby Orr
 * Jacques Lemaire
+* Captain Kirk
 
