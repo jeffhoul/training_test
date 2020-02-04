@@ -9,3 +9,6 @@ Here is a list:
 * Gordie Howe
 * Bobby Hull
 * Yvan Cournoyer
+* Booby Orr
+* Jacques Lemaire
+
