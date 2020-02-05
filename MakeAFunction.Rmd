@@ -1,0 +1,62 @@
+---
+title: "Functions"
+author: "Jeff Houlahan"
+date: "2/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(roxygen2)
+```
+
+
+```{r}
+airtemps <- c(212, 30.3, 78, 32, 0)
+celsius1 <- (airtemps[1]-32)*5/9
+celsius2 <- (airtemps[2]-32)*5/9
+celsius3 <- (airtemps[3]-32)*5/9
+celsius4 <- (airtemps[4]-32)*5/9
+celsius5 <- (airtemps[5]-32)*5/9
+
+celsius1
+celsius2
+celsius3
+```
+# define conversion functions
+The code below provides instructions about how to document the function you created
+```{r}
+#'convery degrees Fahrenheit to Celsius
+#'
+#'We use the simple equation for temperature conversion
+#' @param fahr The temperature to be converted in degrees Fahrenheit
+#' @return the temperature in degree3s Fahrenheit converted to degrees Celsius
+#' @Keywords celsius fahrenheit
+#' @examples F_to_C(32) or F_to_C(vectoroftemperaturevalues)
+F_to_C<-function(fahr){
+  celsius<-(fahr-32)*5/9
+  return(celsius)
+  
+}
+```
+
+```{r}
+celsius<-F_to_C(airtemps)
+```
+ celsius to fahrenheit
+ 
+```{r}
+C_to_F<-function(cels){
+  Fahrenheit<-cels*1.8+32
+  return(Fahrenheit)
+}
+```
+ 
+```{r}
+Fahreneits<-C_to_F(celsius)
+Fahreneits
+```
+ 
