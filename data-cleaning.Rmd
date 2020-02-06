@@ -1,14 +1,127 @@
 ---
 title: "Data Cleaning"
+
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(tidyr)
 
+```
 # Read In the Data
 
+
+```{r}
+catch_original<-read.csv(url("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1", method="libcurl"), stringsAsFactors=FALSE)
+
+head(catch_original)
+```
 # Tidy Up Data
 
+Remove the notes and 'All' column because we don't need them
+
+```{r}
+catch_clean<-catch_original %>% 
+  select(-All,-notesRegCode)%>%
+  mutate(Chinook = ifelse(Chinook=="I",1,(Chinook))) %>% 
+     mutate(Chinook = as.numeric(Chinook))      
+  
+head(catch_clean)
+```
+
+
+## Data QA
+
+DEtermine which values were converted to NA by as.numeric
+Checking for NA values
+
+
+```{r}
+i<- which(is.na(catch_clean$Chinook))
+catch_original[i,]
+```
+ explain what was done with I in row 401
+
+## Convert to long form
+
+Data table iis in wide format and we want long
+
+```{r}
+catch_long<-catch_clean %>% 
+  pivot_longer(cols = -c(Region, Year), names_to = "species", values_to ="Catch") %>% 
+  rename(catch_thousands=Catch) %>% 
+  mutate(Catch = catch_thousands*1000) %>% 
+  select(-catch_thousands)
+
+```
+
+
+# Summarize
+
+CAlculate the mean catch by region
+
+```{r}
+mean_region<-catch_long %>% 
+  group_by(Region, species) %>% 
+  summarize(mean_catch=mean(Catch),n_obs=n())
+head(mean_region)
+```
+
+Filter for only sockeye
+
+
+
+
+
 # Join to other Data
+```
+
+```{r}
+regions_defs<-read.csv(url("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1", method="libcurl"), stringsAsFactors=FALSE) %>% 
+  select(code,mgmtArea)
+head(regions_defs)
+```
+
+```{r}
+catch_joined<-left_join(catch_long, regions_defs, by = c("Region" ="code"))
+head(catch_joined)
+```
+
+
+
+
+
+
+```{r}
+sites_df <- data.frame(site = c("HAW-101",
+                                "HAW-103",
+                                "OAH-320",
+                                "OAH-219",
+                                "MAI-039"),
+                       stringsAsFactors = FALSE) %>% 
+
+
+  separate(site, c("island", "site_number"), sep = "-")
+head(sites_df)
+```
+```{r}
+dates_df <- data.frame(year = c("1930",
+                                "1930",
+                                "1930"),
+                       month = c("12",
+                                "12",
+                                "12"),
+                       day = c("14",
+                               "15",
+                               "16"),
+                       stringsAsFactors = FALSE) %>% 
+  unite(date, year, month, day, sep = "-")
+head(dates_df)
+```
+
+
+

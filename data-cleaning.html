@@ -366,14 +366,134 @@ summary {
 </div>
 
 
+<pre class="r"><code>library(dplyr)
+library(tidyr)</code></pre>
 <div id="read-in-the-data" class="section level1">
 <h1>Read In the Data</h1>
+<pre class="r"><code>catch_original&lt;-read.csv(url(&quot;https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1&quot;, method=&quot;libcurl&quot;), stringsAsFactors=FALSE)
+
+head(catch_original)</code></pre>
+<pre><code>##   Region Year Chinook Sockeye Coho Pink Chum All notesRegCode
+## 1    SSE 1886       0       5    0    0    0   5             
+## 2    SSE 1887       0     155    0    0    0 155             
+## 3    SSE 1888       0     224   16    0    0 240             
+## 4    SSE 1889       0     182   11   92    0 285             
+## 5    SSE 1890       0     251   42    0    0 292             
+## 6    SSE 1891       0     274   24    0    0 298</code></pre>
 </div>
 <div id="tidy-up-data" class="section level1">
 <h1>Tidy Up Data</h1>
+<p>Remove the notes and ‘All’ column because we don’t need them</p>
+<pre class="r"><code>catch_clean&lt;-catch_original %&gt;% 
+  select(-All,-notesRegCode)%&gt;%
+  mutate(Chinook = ifelse(Chinook==&quot;I&quot;,1,(Chinook))) %&gt;% 
+     mutate(Chinook = as.numeric(Chinook))      
+  
+head(catch_clean)</code></pre>
+<pre><code>##   Region Year Chinook Sockeye Coho Pink Chum
+## 1    SSE 1886       0       5    0    0    0
+## 2    SSE 1887       0     155    0    0    0
+## 3    SSE 1888       0     224   16    0    0
+## 4    SSE 1889       0     182   11   92    0
+## 5    SSE 1890       0     251   42    0    0
+## 6    SSE 1891       0     274   24    0    0</code></pre>
+<div id="data-qa" class="section level2">
+<h2>Data QA</h2>
+<p>DEtermine which values were converted to NA by as.numeric Checking for NA values</p>
+<pre class="r"><code>i&lt;- which(is.na(catch_clean$Chinook))
+catch_original[i,]</code></pre>
+<pre><code>## [1] Region       Year         Chinook      Sockeye      Coho        
+## [6] Pink         Chum         All          notesRegCode
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+<p>explain what was done with I in row 401</p>
+</div>
+<div id="convert-to-long-form" class="section level2">
+<h2>Convert to long form</h2>
+<p>Data table iis in wide format and we want long</p>
+<pre class="r"><code>catch_long&lt;-catch_clean %&gt;% 
+  pivot_longer(cols = -c(Region, Year), names_to = &quot;species&quot;, values_to =&quot;Catch&quot;) %&gt;% 
+  rename(catch_thousands=Catch) %&gt;% 
+  mutate(Catch = catch_thousands*1000) %&gt;% 
+  select(-catch_thousands)</code></pre>
+</div>
+</div>
+<div id="summarize" class="section level1">
+<h1>Summarize</h1>
+<p>CAlculate the mean catch by region</p>
+<pre class="r"><code>mean_region&lt;-catch_long %&gt;% 
+  group_by(Region, species) %&gt;% 
+  summarize(mean_catch=mean(Catch),n_obs=n())
+head(mean_region)</code></pre>
+<pre><code>## # A tibble: 6 x 4
+## # Groups:   Region [2]
+##   Region species mean_catch n_obs
+##   &lt;chr&gt;  &lt;chr&gt;        &lt;dbl&gt; &lt;int&gt;
+## 1 ALU    Chinook       23.0    87
+## 2 ALU    Chum        2908.     87
+## 3 ALU    Coho         195.     87
+## 4 ALU    Pink      191954.     87
+## 5 ALU    Sockeye     6839.     87
+## 6 BER    Chinook       19.6   102</code></pre>
+<p>Filter for only sockeye</p>
 </div>
 <div id="join-to-other-data" class="section level1">
 <h1>Join to other Data</h1>
+<pre><code>
+
+```r
+regions_defs&lt;-read.csv(url(&quot;https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1&quot;, method=&quot;libcurl&quot;), stringsAsFactors=FALSE) %&gt;% 
+  select(code,mgmtArea)
+head(regions_defs)</code></pre>
+<pre><code>##      code                                  mgmtArea
+## 1     GSE              Unallocated Southeast Alaska
+## 2     NSE                 Northern Southeast Alaska
+## 3     SSE                 Southern Southeast Alaska
+## 4     YAK                                   Yakutat
+## 5 PWSmgmt      Prince William Sound Management Area
+## 6     BER Bering River Subarea Copper River Subarea</code></pre>
+<pre class="r"><code>catch_joined&lt;-left_join(catch_long, regions_defs, by = c(&quot;Region&quot; =&quot;code&quot;))
+head(catch_joined)</code></pre>
+<pre><code>## # A tibble: 6 x 5
+##   Region  Year species Catch mgmtArea                 
+##   &lt;chr&gt;  &lt;int&gt; &lt;chr&gt;   &lt;dbl&gt; &lt;chr&gt;                    
+## 1 SSE     1886 Chinook     0 Southern Southeast Alaska
+## 2 SSE     1886 Sockeye  5000 Southern Southeast Alaska
+## 3 SSE     1886 Coho        0 Southern Southeast Alaska
+## 4 SSE     1886 Pink        0 Southern Southeast Alaska
+## 5 SSE     1886 Chum        0 Southern Southeast Alaska
+## 6 SSE     1887 Chinook     0 Southern Southeast Alaska</code></pre>
+<pre class="r"><code>sites_df &lt;- data.frame(site = c(&quot;HAW-101&quot;,
+                                &quot;HAW-103&quot;,
+                                &quot;OAH-320&quot;,
+                                &quot;OAH-219&quot;,
+                                &quot;MAI-039&quot;),
+                       stringsAsFactors = FALSE) %&gt;% 
+
+
+  separate(site, c(&quot;island&quot;, &quot;site_number&quot;), sep = &quot;-&quot;)
+head(sites_df)</code></pre>
+<pre><code>##   island site_number
+## 1    HAW         101
+## 2    HAW         103
+## 3    OAH         320
+## 4    OAH         219
+## 5    MAI         039</code></pre>
+<pre class="r"><code>dates_df &lt;- data.frame(year = c(&quot;1930&quot;,
+                                &quot;1930&quot;,
+                                &quot;1930&quot;),
+                       month = c(&quot;12&quot;,
+                                &quot;12&quot;,
+                                &quot;12&quot;),
+                       day = c(&quot;14&quot;,
+                               &quot;15&quot;,
+                               &quot;16&quot;),
+                       stringsAsFactors = FALSE) %&gt;% 
+  unite(date, year, month, day, sep = &quot;-&quot;)
+head(dates_df)</code></pre>
+<pre><code>##         date
+## 1 1930-12-14
+## 2 1930-12-15
+## 3 1930-12-16</code></pre>
 </div>
 
 
