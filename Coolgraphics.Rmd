@@ -1,0 +1,123 @@
+---
+title: "Graphics"
+author: "Jeff Houlahan"
+date: "2/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(leaflet)
+library(DT)
+library(scales)
+```
+# Read and tidy data
+
+
+```{r}
+data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e"
+
+esc <- tryCatch(
+    read.csv("data/escapement.csv", stringsAsFactors = FALSE),
+    error=function(cond) {
+        message(paste("Escapement file does not seem to exist, so get it from the KNB."))
+        esc <- read.csv(url(data_url, method = "libcurl"), stringsAsFactors = FALSE)
+        return(esc)
+    }
+)
+head(esc)
+```
+
+```{r}
+esc_Yearly<-esc %>% 
+   separate(sampleDate, c("Year", "Month", "Day"), "-") %>% 
+
+mutate(Year=as.numeric(Year))
+
+escYearlyTotals<-esc_Yearly %>% 
+  group_by(SASAP.Region, Year, Species) %>% 
+  summarize(sum_catch=sum(DailyCount),n_obs=n()) %>% 
+  filter(Species%in% c("Chinook", "Sockeye", "Pink", "Chum", "Coho"))
+head(escYearlyTotals)
+```
+
+```{r}
+ggplot(data= escYearlyTotals, mapping = aes(x = Species, y = sum_catch)) + 
+  geom_col()
+
+```
+
+
+```{r}
+
+Kodiak_esc<-escYearlyTotals %>% 
+
+  filter(SASAP.Region == "Kodiak")
+
+my_theme<-theme_bw() +
+      theme(legend.position = "bottom",
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(),
+            legend.title = element_blank())
+
+  ggplot( data=Kodiak_esc, mapping = aes(x = Year, y = sum_catch, color =Species)) + 
+  geom_line()+
+  geom_point() +
+    scale_y_continuous(labels=comma)+
+    ylab("Escapement (num fish)") +
+    xlab("Year")+
+    ggtitle("Kodiak Salmon Escapement") +
+    my_theme
+    
+```
+
+
+```{r, fig.width=10, fig.height=5}
+ggplot(data=escYearlyTotals, mapping = aes(x = Year, y = sum_catch, color =Species))+
+  geom_line()+
+  geom_point()+
+  scale_y_continuous(labels=comma)+
+  facet_wrap(~SASAP.Region, scales="free_y", ncol=4) + 
+  my_theme
+```
+
+# Make some static plots
+
+# Make some maps
+
+```{r}
+locations<-esc %>% 
+  distinct(Location, Latitude, Longitude) %>% 
+  drop_na()
+datatable(locations)
+```
+
+```{r}
+leaflet(locations) %>% 
+  addTiles() %>% 
+  addMarkers(lng=~Longitude, lat = ~ Latitude, popup = ~Location)
+```
+
+```{r}
+leaflet(locations) %>% 
+  addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+              layers = 'GEBCO_LATEST',
+              attribution = "Imagery reproduced from the GEBCO_2014 Grid, version 20150318, www.gebco.net") %>%
+  addCircleMarkers(lng = ~Longitude,
+                   lat = ~Latitude,
+                   popup = ~ Location,
+                   radius = 5,
+                   # set fill properties
+                   fillColor = "salmon",
+                   fillOpacity = 1,
+                   # set stroke properties
+                   stroke = T,
+                   weight = 0.5,
+                   color = "white",
+                   opacity = 1)
+```
+
